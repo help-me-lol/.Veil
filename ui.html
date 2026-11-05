@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Veil</title>
+<style>
+:root{--bg:#160d2a;--bar:#22143f;--tab:#2e1c54;--mist:#e9e4f7;--dim:#a99ccc;--amber:#ffb86b;--line:#3b2a66}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--mist);font:15px/1.5 ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+#tabs{display:flex;gap:6px;padding:8px 10px 0;background:var(--bg);overflow-x:auto;align-items:flex-end}
+.tab{display:flex;align-items:center;gap:8px;min-width:130px;max-width:210px;padding:8px 10px 8px 14px;border-radius:14px 14px 0 0;background:transparent;color:var(--dim);transition:background .15s}
+.tab.on{background:var(--bar);color:var(--mist)}
+.tab span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.tab i{font-style:normal;opacity:.6;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center}
+.tab i:hover{background:var(--line);opacity:1}
+#add{padding:6px 12px;color:var(--dim);font-size:20px}
+#bar{display:flex;gap:8px;padding:8px 10px;background:var(--bar);align-items:center;border-bottom:1px solid var(--line)}
+#bar button{width:34px;height:34px;border-radius:10px;color:var(--dim)}#bar button:hover{background:var(--tab);color:var(--mist)}
+#addr{flex:1;height:36px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--mist);padding:0 16px;font:inherit}
+#addr:focus{border-color:var(--amber);outline:0}
+#shield{padding:0 12px;height:36px;border-radius:18px;background:var(--tab);color:var(--amber);white-space:nowrap}
+#wipe{padding:0 14px;height:36px;border-radius:18px;border:1px solid var(--amber);color:var(--amber)}#wipe:hover{background:var(--amber);color:#2a1500}
+#view{flex:1;position:relative;background:#fff}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}iframe.on{display:block}
+#home{position:absolute;inset:0;background:radial-gradient(900px 500px at 70% 10%,#3a2377 0,transparent 60%),var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:24px}
+#home.on{display:flex}
+#home h1{font-size:clamp(40px,8vw,92px);line-height:1;margin:0;font-weight:300;letter-spacing:-.03em;animation:drift 1.6s ease-out both}
+@keyframes drift{from{opacity:0;filter:blur(14px);letter-spacing:.08em}to{opacity:1;filter:blur(0)}}
+#home p{margin:0;color:var(--dim);max-width:46ch}
+#q{width:min(560px,90vw);height:52px;border-radius:26px;border:1px solid var(--line);background:rgba(22,13,42,.7);color:var(--mist);padding:0 24px;font:inherit;font-size:17px}
+#q:focus{border-color:var(--amber);outline:0}
+@media(prefers-reduced-motion:reduce){#home h1{animation:none}}
+</style></head><body>
+<div id="tabs"></div>
+<div id="bar">
+ <button id="back" aria-label="Back">&#8592;</button><button id="fwd" aria-label="Forward">&#8594;</button><button id="reload" aria-label="Reload">&#8635;</button>
+ <input id="addr" placeholder="Search or enter address" autocomplete="off" spellcheck="false" aria-label="Address">
+ <span id="shield" title="Trackers blocked this session">0 blocked</span>
+ <button id="wipe" title="Close every tab and clear counters">Wipe session</button>
+</div>
+<div id="view"><div id="home" class="on"><h1>Veil</h1><p>Nothing you do here is saved. Close the tab and it&#8217;s gone.</p><input id="q" placeholder="Search privately or type an address" autocomplete="off" spellcheck="false" aria-label="Search"></div></div>
+<script>
+const $=s=>document.querySelector(s);let tabs=[],cur=null,n=0;
+const norm=v=>{v=v.trim();if(!v)return'';if(/^https?:\/\//i.test(v))return v;if(/^[^\s]+\.[a-z]{2,}(\/.*)?$/i.test(v))return'https://'+v;return'https://html.duckduckgo.com/html/?q='+encodeURIComponent(v)};
+function newTab(){const f=document.createElement('iframe');f.setAttribute('referrerpolicy','no-referrer');
+ const t={id:++n,frame:f,title:'New tab',url:''};f.addEventListener('load',()=>sync(t));
+ $('#view').appendChild(f);tabs.push(t);pick(t);$('#q').focus()}
+function pick(t){cur=t;render()}
+function close(t){t.frame.remove();tabs=tabs.filter(x=>x!==t);if(!tabs.length)return newTab();if(cur===t)cur=tabs[tabs.length-1];render()}
+function go(v){const u=norm(v);if(!u)return;cur.url=u;cur.title='Loading…';cur.frame.src='/go?u='+encodeURIComponent(u);render()}
+function sync(t){try{const l=new URL(t.frame.contentWindow.location.href);if(l.pathname==='/go'){t.url=l.searchParams.get('u');t.title=t.frame.contentDocument.title||new URL(t.url).hostname}}catch(e){}render()}
+function render(){
+ $('#tabs').innerHTML='';tabs.forEach(t=>{const b=document.createElement('div');b.className='tab'+(t===cur?' on':'');
+  b.innerHTML='<span></span><i role="button" aria-label="Close tab">&#215;</i>';b.firstChild.textContent=t.title;
+  b.onclick=()=>pick(t);b.querySelector('i').onclick=e=>{e.stopPropagation();close(t)};$('#tabs').appendChild(b)});
+ const a=document.createElement('button');a.id='add';a.textContent='+';a.setAttribute('aria-label','New tab');a.onclick=newTab;$('#tabs').appendChild(a);
+ tabs.forEach(t=>t.frame.classList.toggle('on',t===cur&&!!t.url));$('#home').classList.toggle('on',!cur.url);
+ if(document.activeElement!==$('#addr'))$('#addr').value=cur.url}
+$('#addr').onkeydown=e=>{if(e.key==='Enter'){go(e.target.value);e.target.blur()}};
+$('#q').onkeydown=e=>{if(e.key==='Enter'){go(e.target.value);e.target.value=''}};
+$('#addr').onfocus=e=>e.target.select();
+const hist=m=>()=>{try{cur.frame.contentWindow.history[m]()}catch(e){}};
+$('#back').onclick=hist('back');$('#fwd').onclick=hist('forward');
+$('#reload').onclick=()=>{try{cur.frame.contentWindow.location.reload()}catch(e){}};
+$('#wipe').onclick=async()=>{tabs.forEach(t=>t.frame.remove());tabs=[];await fetch('/reset');newTab()};
+setInterval(async()=>{try{const s=await(await fetch('/stats')).json();$('#shield').textContent=s.blocked+' blocked'}catch(e){}},2000);
+newTab();
+</script></body></html>
